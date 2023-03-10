@@ -142,8 +142,8 @@ NOTES:
  *   Max ops: 14
  *   Rating: 1
  */
-int bitXor(int x, int y) {
-  return 2;
+int bitXor(int x, int y) { // 这道题涉及到硬件电路，在非双0或双1的情况下逐位&运算，再取反
+    return ~(~x & ~y) & ~(x & y);
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -151,10 +151,8 @@ int bitXor(int x, int y) {
  *   Max ops: 4
  *   Rating: 1
  */
-int tmin(void) {
-
-  return 2;
-
+int tmin(void) { // 题意返回2进制最小补码，众所周知如书中所讲，补码当中，最高位即符号位的权重就是-(2^n)
+    return 1 << 32; // 假如是4位补码，那么最高位上的权值就是-(2^3)=8，又只能用0~255，所以给1左移32为就ok了
 }
 //2
 /*
@@ -164,8 +162,13 @@ int tmin(void) {
  *   Max ops: 10
  *   Rating: 1
  */
-int isTmax(int x) {
-  return 2;
+int isTmax(int x) { // max为0111…… ，取反后正好是上面的tmin
+    int i = x + 1; // 排除Tmin
+    x = x + i; // 排除-1
+    x = ~x; // 排除0
+    i = !i; // 排除32位全1
+    x = x + i;
+    return !x;
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -175,8 +178,12 @@ int isTmax(int x) {
  *   Max ops: 12
  *   Rating: 2
  */
-int allOddBits(int x) {
-  return 2;
+int allOddBits(int x) { // 如果所有奇数位为1返回true，如果数为奇数就肯定不是（除非32位全1）
+    int a_8 = 0xAA;
+    int a_16 = (a_8 << 8) | (a_8);
+    int a_32 = (a_16 << 16) | (a_16);
+    int equal = (x & a_32) ^ a_32; // 排除有偶数位是1的情况
+    return !equal;
 }
 /* 
  * negate - return -x 
@@ -185,8 +192,8 @@ int allOddBits(int x) {
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) {
-  return 2;
+int negate(int x) { // 补码转源码：取反+1
+  return ~x + 1;
 }
 //3
 /* 
@@ -198,8 +205,10 @@ int negate(int x) {
  *   Max ops: 15
  *   Rating: 3
  */
-int isAsciiDigit(int x) {
-  return 2;
+int isAsciiDigit(int x) { // 0011 0000 <= x <= 0011 1001
+    int lowerBound = !((x + (~0x30 + 1)) >> 31);
+    int upperBound = !((0x39 + (~x + 1)) >> 31);
+    return lowerBound & upperBound;
 }
 /* 
  * conditional - same as x ? y : z 
@@ -208,8 +217,9 @@ int isAsciiDigit(int x) {
  *   Max ops: 16
  *   Rating: 3
  */
-int conditional(int x, int y, int z) {
-  return 2;
+int conditional(int x, int y, int z) { // 返回值二选一，那肯定要用|
+    int flag = (!(!!x)) + 1; // 先!!转为bool，再nagate
+    return (flag & y) | (~flag & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -219,7 +229,12 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+    int signX = x >> 31; // 给x右移31位得到符号位
+    int signY = y >> 31;
+    int signCompare = !!((signX ^ signY) & signX); // 判断x为负y为正
+    int isEqual = !(x ^ y); // 判断相等
+    int diff = !!((x + ~y + 1)>>31 & !(signX ^ signY));
+    return signCompare | isEqual | diff;
 }
 //4
 /* 
@@ -230,8 +245,8 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 12
  *   Rating: 4 
  */
-int logicalNeg(int x) {
-  return 2;
+int logicalNeg(int x) { // 非零数与自己的相反数与最高位总是1，0的还是0
+    return ((x | (~x + 1)) >> 31) + 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -246,9 +261,22 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+    int b16, b8, b4, b2, b1, b0, sign = x >> 31;
+    x = x ^ sign; // 从高位找第一个1
+    b16 = !!(x >> 16)<<4;
+    x = x >> b16;
+    b8 = !!(x >> 8) << 3;
+    x = x >> b8;
+    b4 = !!(x >> 4) << 2;
+    x = x >> b4;
+    b2 = !!(x >> 2) << 1;
+    x = x >> b2;
+    b1 = !!(x >> 1) << 0;
+    x = x >> b1;
+    b0 = x;
+    return  b16 + b8 + b4 + b2 + b1 + b0 + 1;
 }
-//float
+//float 浮点数难度有点大，毕设完了再回来啃
 /* 
  * floatScale2 - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
